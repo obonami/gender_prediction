@@ -3,13 +3,15 @@ import torch
 
 
 def plot_prediction_curve(word, predictions):
-    class_names = list(predictions[0].keys())
-    class_probs = [[c[key] for c in predictions] for key in class_names]
+    class_names = list(predictions[0][1].keys())
+    class_probs = [[tup[1][key] for tup in predictions] for key in class_names]
+    characters = [tup[0] for tup in predictions]
     for i, class_i in enumerate(class_probs):
-        plt.plot(range(len(class_i)), class_i, label=class_names[i])
+        plt.plot(range(len(characters)), class_i, label=class_names[i])
     plt.title(f'Probability of each gender at each character position in "{word}"')
     plt.xlabel('Character indecies')
     plt.ylabel('Probability')
+    plt.xticks(range(len(characters)), characters)
     plt.legend()
     plt.show()
     print(f'Probability values:\n  {predictions}')

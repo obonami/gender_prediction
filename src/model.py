@@ -83,7 +83,7 @@ class GenderLSTM(nn.Module):
                 Y = torch.LongTensor(labels).to(self.device) # shape: [batch_size]
 
                 optimizer.zero_grad()
-                Y_seq_probs, Y_hidden_logits = self.forward(X)    # shapes: [batch_size, sequence_length, num_classes], [batch_size, num_classes]
+                Y_seq_probs, Y_hidden_logits = self.forward(X) # shapes: [batch_size, sequence_length, num_classes], [batch_size, num_classes]
 
                 # Loss
                 loss = criterion(Y_hidden_logits, Y)
@@ -106,11 +106,14 @@ class GenderLSTM(nn.Module):
                     if self.reversed:
                         word = reverse_sequence(word)
                     train_char_prediction_probs[word] = [
-                        {
-                            datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
-                            for class_idx in range(num_classes)
-                        }
-                        for char_idx, char in enumerate(Y_seq_probs[word_idx]) if char != datagenerator.pad_token
+                        (
+                            datagenerator.input_idx2sym[char_id], 
+                            {
+                                datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
+                                for class_idx in range(num_classes)
+                            }
+                        )
+                        for char_idx, char_id in enumerate(X[word_idx]) if char_id != pad_idx
                         ]
 
                 # Plateau info
@@ -145,11 +148,14 @@ class GenderLSTM(nn.Module):
                         if self.reversed:
                             word = reverse_sequence(word)
                         valid_char_prediction_probs[word] = [
-                            {
-                                datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
-                                for class_idx in range(num_classes)
-                            }
-                            for char_idx, char in enumerate(Y_seq_probs[word_idx]) if char != datagenerator.pad_token
+                            (
+                                datagenerator.input_idx2sym[char_id], 
+                                {
+                                    datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
+                                    for class_idx in range(num_classes)
+                                }
+                            )
+                            for char_idx, char_id in enumerate(X[word_idx]) if char_id != pad_idx
                             ]
 
                     # Plateau info
