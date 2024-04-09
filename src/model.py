@@ -43,7 +43,10 @@ class GenderLSTM(nn.Module):
         return out_probabilities, hidden_logits  
 
 
-    def train_model(self, datagenerator, n_epochs, batch_size, learning_rate=0.001, verbose=True, save_model=True, model_path='../saved_models/GenderLSTM_model.pth'):
+    def train_model(self, traingenerator, validgenerator, n_epochs, batch_size, learning_rate=0.001, verbose=True, save_model=False):
+        """
+        save_model must be either False or a string showing the path where the model should be saved.
+        """
         criterion = nn.CrossEntropyLoss(ignore_index=self.pad_idx)
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
         
@@ -78,7 +81,7 @@ class GenderLSTM(nn.Module):
             
             # Training phase
             self.train()
-            for inputs, labels in datagenerator.generate_batches(batch_size):
+            for inputs, labels in traingenerator.generate_batches(batch_size):
                 X = torch.LongTensor(inputs).to(self.device) # shape: [batch_size, sequence_length]
                 Y = torch.LongTensor(labels).to(self.device) # shape: [batch_size]
 
@@ -98,18 +101,18 @@ class GenderLSTM(nn.Module):
                 epoch_train_accuracies.append(avg_batch_accuracy)
 
                 # Character-level predictions
-                pad_idx = datagenerator.input_sym2idx[datagenerator.pad_token]
+                pad_idx = traingenerator.input_sym2idx[traingenerator.pad_token]
                 num_classes = Y_seq_probs.size(-1)          
                 for word_idx in range(len(X)):
-                    word = ''.join(datagenerator.input_idx2sym[char_id] for char_id in X[word_idx] if char_id != pad_idx)
+                    word = ''.join(traingenerator.input_idx2sym[char_id] for char_id in X[word_idx] if char_id != pad_idx)
                     # If the words are reversed, return them to their normal form
                     if self.reversed:
                         word = reverse_sequence(word)
                     train_char_prediction_probs[word] = [
                         (
-                            datagenerator.input_idx2sym[char_id], 
+                            traingenerator.input_idx2sym[char_id], 
                             {
-                                datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
+                                traingenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
                                 for class_idx in range(num_classes)
                             }
                         )
@@ -124,7 +127,7 @@ class GenderLSTM(nn.Module):
 
             # Validation phase
             self.eval()
-            for val_inputs, val_labels in datagenerator.generate_batches(batch_size, validation=True):
+            for val_inputs, val_labels in validgenerator.generate_batches(batch_size):
                 with torch.no_grad():
                     X = torch.LongTensor(val_inputs).to(self.device)
                     Y = torch.LongTensor(val_labels).to(self.device)
@@ -143,15 +146,15 @@ class GenderLSTM(nn.Module):
 
                     # Character-level predictions         
                     for word_idx in range(len(X)):
-                        word = ''.join(datagenerator.input_idx2sym[char_id] for char_id in X[word_idx] if char_id != pad_idx)
+                        word = ''.join(validgenerator.input_idx2sym[char_id] for char_id in X[word_idx] if char_id != pad_idx)
                         # If the words are reversed, return them to their normal form
                         if self.reversed:
                             word = reverse_sequence(word)
                         valid_char_prediction_probs[word] = [
                             (
-                                datagenerator.input_idx2sym[char_id], 
+                                validgenerator.input_idx2sym[char_id], 
                                 {
-                                    datagenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
+                                    validgenerator.output_idx2sym[class_idx]: Y_seq_probs[word_idx, char_idx, class_idx].item() 
                                     for class_idx in range(num_classes)
                                 }
                             )
@@ -209,7 +212,7 @@ class GenderLSTM(nn.Module):
                         'valid_acc_at_plateau_beg': valid_avg_acc_at_mode_plateau_beg,
                         'valid_char_prediction_probs': valid_char_prediction_probs,
                     }
-                    torch.save(checkpoint, model_path)
+                    torch.save(checkpoint, save_model)
             else:
                 counter += 1
 
@@ -225,7 +228,7 @@ class GenderLSTM(nn.Module):
         predictions = {'Word': [], 'Predicted Gender': [], 'True Gender': []}
         
         self.eval()
-        for inputs, labels in datagenerator.generate_batches(batch_size, validation=True):
+        for inputs, labels in datagenerator.generate_batches(batch_size):
             with torch.no_grad():
                 X = torch.LongTensor(inputs).to(self.device)
                 Y = torch.LongTensor(labels).to(self.device)

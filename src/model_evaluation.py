@@ -4,14 +4,14 @@ from data_processing import DataGenerator
 from model import GenderLSTM
 
 
-def baseline_accuracy(datagenerator, verbose=False):
-    _, train_labels = list(*datagenerator.generate_batches(datagenerator.train_size, validation=False))
+def baseline_accuracy(traingenerator, validgenerator, verbose=False):
+    _, train_labels = list(*traingenerator.generate_batches(len(traingenerator.X)))
     most_frequent_label = max(set(train_labels), key=train_labels.count)   
     
     if verbose:
-        print(f'The most frequent label in the dataset is: {datagenerator.output_idx2sym[most_frequent_label]}')
+        print(f'The most frequent label in the dataset is: {traingenerator.output_idx2sym[most_frequent_label]}')
 
-    dev_labels = list(*datagenerator.generate_batches(datagenerator.test_size, validation=True))[1]
+    _, dev_labels = list(*validgenerator.generate_batches(len(validgenerator.X)))
     return dev_labels.count(most_frequent_label) / len(dev_labels)
 
 
@@ -34,7 +34,7 @@ def compare_accuracies(baseline_acc, model_acc):
     plt.show()
 
 
-def statistical_check(dataset, hyperparameters, runs=10, reverse_nouns=True, device='cpu'):
+def statistical_check(trainset, validset, hyperparameters, runs=10, reverse_nouns=True, device='cpu'):
     """
     Returns the accuracy, loss, plateau beginning index, and accuracy at plateau beginning index 
             averaged over a specified number of runs for both training and validation sets.
@@ -49,9 +49,10 @@ def statistical_check(dataset, hyperparameters, runs=10, reverse_nouns=True, dev
     lr = hyperparameters['lr']
 
     for _ in range(runs):
-        data_generator = DataGenerator(dataset, reverse_nouns=reverse_nouns)
-        model = GenderLSTM(data_generator, embedding_dim, hidden_size, device=device)
-        train, val = model.train_model(data_generator, n_epochs, batch_size, lr, verbose=False, save_model=False)
+        train_generator = DataGenerator(trainset, reverse_nouns=reverse_nouns)
+        valid_generator = DataGenerator(validset, reverse_nouns=reverse_nouns)
+        model = GenderLSTM(train_generator, embedding_dim, hidden_size, device=device)
+        train, val = model.train_model(train_generator, valid_generator, n_epochs, batch_size, lr, verbose=False, save_model=False)
         
         train_loss.append(train['loss'][-1])
         train_acc.append(train['accuracy'][-1])

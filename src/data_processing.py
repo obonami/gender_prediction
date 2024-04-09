@@ -68,6 +68,7 @@ def save_probabilities(model_checkpoint, df, filename):
 
     # Dictionary mapping words to their true genders
     word_to_gender = dict(zip(df.iloc[:,0], df['gen']))
+    print(word_to_gender)
 
     with open(filename, 'w') as file:
         writer = csv.writer(file)
@@ -82,52 +83,102 @@ def save_probabilities(model_checkpoint, df, filename):
         print(f'File successfully written to {filename}.')
 
 
+# class DataGenerator:
+
+#       def __init__(self, data, reverse_nouns=False, pad_token='<pad>', unk_token='<unk>'):
+
+#             self.pad_token = pad_token
+#             self.unk_token = unk_token
+
+#             self.input_idx2sym,self.input_sym2idx   = vocabulary(data,False)
+#             self.output_idx2sym,self.output_sym2idx = vocabulary(data,True)
+
+#             nouns, genders = get_data(data, reverse_nouns=reverse_nouns)
+            
+#             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(nouns, genders, test_size=0.2)
+
+#             self.train_size = len(self.X_train)
+#             self.test_size = len(self.X_test)
+
+#       def generate_batches(self,batch_size,validation=False):
+
+#             if validation:
+#                 X = self.X_test
+#                 y = self.y_test
+#             else:
+#                 X = self.X_train
+#                 y = self.y_train
+
+#             assert(len(X) == len(y))
+
+#             N     = len(X)
+#             idxes = list(range(N))
+
+#             # data ordering
+#             shuffle(idxes)
+#             idxes.sort(key=lambda idx: len(X[idx]))
+
+#             # batch generation
+#             bstart = 0
+#             while bstart < N:
+#                 bend        = min(bstart+batch_size,N)
+#                 batch_idxes = idxes[bstart:bend]
+#                 batch_len   = max(len(X[idx]) for idx in batch_idxes)
+#                 Xpad        = [pad_sequence(X[idx],batch_len,self.pad_token) for idx in batch_idxes]
+#                 #   save_padded_words('../data/eval/padded_fr', Xpad)
+#                 seqX        = [code_sequence(x,self.input_sym2idx,self.unk_token) for x in Xpad]
+#                 seqY        = [self.output_sym2idx[y[idx]] for idx in batch_idxes]
+
+#                 assert(len(seqX) == len(seqY))
+#                 yield (seqX,seqY)
+#                 bstart += batch_size
+
+
 class DataGenerator:
 
-      def __init__(self, data, reverse_nouns=False, pad_token='<pad>', unk_token='<unk>'):
+      def __init__(self, df, parentgenerator=None, reverse_nouns=False, pad_token='<pad>', unk_token='<unk>'):
 
-            self.pad_token = pad_token
-            self.unk_token = unk_token
+            if parentgenerator is not None: #Reuse the encodings of the parent if specified
+                self.pad_token      = parentgenerator.pad_token
+                self.unk_token      = parentgenerator.unk_token
+                self.input_sym2idx  = parentgenerator.input_sym2idx
+                self.input_idx2sym  = parentgenerator.input_idx2sym
+                self.output_sym2idx = parentgenerator.output_sym2idx
+                self.output_idx2sym = parentgenerator.output_idx2sym
+            else:                           #Creates new encodings
+                self.pad_token = pad_token
+                self.unk_token = unk_token
+                self.input_idx2sym, self.input_sym2idx   = vocabulary(df, labels=False)
+                self.output_idx2sym, self.output_sym2idx = vocabulary(df, labels=True)
 
-            self.input_idx2sym,self.input_sym2idx   = vocabulary(data,False)
-            self.output_idx2sym,self.output_sym2idx = vocabulary(data,True)
+            nouns, genders = get_data(df, reverse_nouns=reverse_nouns)
+            self.X = nouns
+            self.Y = genders
 
-            nouns, genders = get_data(data, reverse_nouns=reverse_nouns)
-            
-            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(nouns, genders, test_size=0.2)
 
-            self.train_size = len(self.X_train)
-            self.test_size = len(self.X_test)
+      def generate_batches(self, batch_size):
 
-      def generate_batches(self,batch_size,validation=False):
+            assert(len(self.X) == len(self.Y))
 
-            if validation:
-                X = self.X_test
-                y = self.y_test
-            else:
-                X = self.X_train
-                y = self.y_train
-
-            assert(len(X) == len(y))
-
-            N     = len(X)
+            N     = len(self.X)
             idxes = list(range(N))
 
             # data ordering
             shuffle(idxes)
-            idxes.sort(key=lambda idx: len(X[idx]))
+            idxes.sort(key=lambda idx: len(self.X[idx]))
 
             # batch generation
             bstart = 0
             while bstart < N:
-                bend        = min(bstart+batch_size,N)
+                bend        = min(bstart + batch_size, N)
                 batch_idxes = idxes[bstart:bend]
-                batch_len   = max(len(X[idx]) for idx in batch_idxes)
-                Xpad        = [pad_sequence(X[idx],batch_len,self.pad_token) for idx in batch_idxes]
-                #   save_padded_words('../data/eval/padded_fr', Xpad)
-                seqX        = [code_sequence(x,self.input_sym2idx,self.unk_token) for x in Xpad]
-                seqY        = [self.output_sym2idx[y[idx]] for idx in batch_idxes]
+                batch_len   = max(len(self.X[idx]) for idx in batch_idxes)
+
+                padded_X = [pad_sequence(self.X[idx], batch_len, self.pad_token) for idx in batch_idxes]
+                #   save_padded_words('../data/eval/padded_nouns', padded_X)
+                seqX = [code_sequence(seq, self.input_sym2idx, self.unk_token) for seq in padded_X]
+                seqY = [self.output_sym2idx[self.Y[idx]] for idx in batch_idxes]
 
                 assert(len(seqX) == len(seqY))
-                yield (seqX,seqY)
+                yield (seqX, seqY)
                 bstart += batch_size
