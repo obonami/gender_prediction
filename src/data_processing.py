@@ -25,7 +25,7 @@ def decode_sequence(idxseq, decodingmap):
     return [decodingmap[idx] for idx in idxseq]
 
 
-def get_data_from_df(df, reverse_nouns=False):
+def get_data(df, reverse_nouns=False):
     nouns = df.iloc[:,0].tolist()
     gender = df.iloc[:,1].tolist()   
     if reverse_nouns:
@@ -36,7 +36,7 @@ def get_data_from_df(df, reverse_nouns=False):
 
 def vocabulary(df, labels=False, pad_token='<pad>', unk_token='<unk>'):
 
-    nouns, genders = get_data_from_df(df, reverse_nouns=False)
+    nouns, genders = get_data(df, reverse_nouns=False)
     
     if labels:
         sym2idx = {sym: idx for idx, sym in enumerate(set(genders))}
@@ -67,7 +67,7 @@ def save_probabilities(model_checkpoint, df, filename):
     sorted_valid = dict(sorted(valid.items()))
 
     # Dictionary mapping words to their true genders
-    word_to_gender = dict(zip(df.iloc[:,0], df['gender']))
+    word_to_gender = dict(zip(df.iloc[:,0], df['gen']))
 
     with open(filename, 'w') as file:
         writer = csv.writer(file)
@@ -92,7 +92,7 @@ class DataGenerator:
             self.input_idx2sym,self.input_sym2idx   = vocabulary(data,False)
             self.output_idx2sym,self.output_sym2idx = vocabulary(data,True)
 
-            nouns, genders = get_data_from_df(data, reverse_nouns=reverse_nouns)
+            nouns, genders = get_data(data, reverse_nouns=reverse_nouns)
             
             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(nouns, genders, test_size=0.2)
 
