@@ -239,7 +239,10 @@ class GenderLSTM(nn.Module):
                 # converting the predictions into readable format
                 pad_idx = datagenerator.input_sym2idx[datagenerator.pad_token]
                 for i in range(len(X)):
-                    predictions['Word'].append(''.join([datagenerator.input_idx2sym[idx] for idx in X[i] if idx != pad_idx]))
+                    word = ''.join([datagenerator.input_idx2sym[idx] for idx in X[i] if idx != pad_idx])
+                    if self.reversed:
+                        word = reverse_sequence(word)
+                    predictions['Word'].append(word)
                     predictions['Predicted Gender'].append(datagenerator.output_idx2sym[Y_pred[i]])
                     predictions['True Gender'].append(datagenerator.output_idx2sym[Y[i]])
         

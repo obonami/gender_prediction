@@ -68,7 +68,6 @@ def save_probabilities(model_checkpoint, df, filename):
 
     # Dictionary mapping words to their true genders
     word_to_gender = dict(zip(df.iloc[:,0], df['gen']))
-    print(word_to_gender)
 
     with open(filename, 'w') as file:
         writer = csv.writer(file)
