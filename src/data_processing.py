@@ -86,14 +86,14 @@ class DataGenerator:
 
       def __init__(self, df, parentgenerator=None, reverse_nouns=False, pad_token='<pad>', unk_token='<unk>'):
 
-            if parentgenerator is not None: #Reuse the encodings of the parent if specified
+            if parentgenerator is not None: # Reuses the encodings of the parent if specified
                 self.pad_token      = parentgenerator.pad_token
                 self.unk_token      = parentgenerator.unk_token
                 self.input_sym2idx  = parentgenerator.input_sym2idx
                 self.input_idx2sym  = parentgenerator.input_idx2sym
                 self.output_sym2idx = parentgenerator.output_sym2idx
                 self.output_idx2sym = parentgenerator.output_idx2sym
-            else:                           #Creates new encodings
+            else:                           # Creates new encodings
                 self.pad_token = pad_token
                 self.unk_token = unk_token
                 self.input_idx2sym, self.input_sym2idx   = vocabulary(df, labels=False)
