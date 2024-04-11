@@ -3,7 +3,7 @@ from random import shuffle
 
 
 def reverse_sequence(noun):
-    return noun[::-1]
+    return str(noun)[::-1]
 
 
 def pad_sequence(sequence, pad_size, pad_token):
