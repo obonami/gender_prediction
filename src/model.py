@@ -224,8 +224,8 @@ class GenderLSTM(nn.Module):
         return train, valid
 
 
-    def predict(self, datagenerator, batch_size):
-        predictions = {'Word': [], 'Predicted Gender': [], 'True Gender': []}
+    def predict(self, datagenerator, batch_size, set=str):
+        predictions = {'Word': [], 'Predicted Gender': [], 'True Gender': [], 'Class Probabilities': [], 'Set': []}
         
         self.eval()
         for inputs, labels in datagenerator.generate_batches(batch_size):
@@ -233,7 +233,7 @@ class GenderLSTM(nn.Module):
                 X = torch.LongTensor(inputs).to(self.device)
                 Y = torch.LongTensor(labels).to(self.device)
 
-                _, logits = self.forward(X)
+                probs, logits = self.forward(X) # shapes: [batch_size, sequence_length, num_classes], [batch_size, num_classes]
                 Y_pred = torch.argmax(logits, dim=-1)
 
                 # converting the predictions into readable format
@@ -245,6 +245,20 @@ class GenderLSTM(nn.Module):
                     predictions['Word'].append(word)
                     predictions['Predicted Gender'].append(datagenerator.output_idx2sym[Y_pred[i]])
                     predictions['True Gender'].append(datagenerator.output_idx2sym[Y[i]])
+
+                    # character-level probabilities
+                    predictions['Class Probabilities'].append([
+                        (
+                            datagenerator.input_idx2sym[char_id], 
+                            {
+                                datagenerator.output_idx2sym[class_idx]: probs[i, char_idx, class_idx].item() 
+                                for class_idx in range(probs.size(-1))
+                            }
+                        )
+                        for char_idx, char_id in enumerate(X[i]) if char_id != pad_idx
+                        ])
+                    
+                    predictions['Set'].append(set)
         
         return predictions
 

@@ -1,5 +1,5 @@
+import ast
 import matplotlib.pyplot as plt
-import torch
 
 
 def plot_prediction_curve(word, predictions):
@@ -17,20 +17,14 @@ def plot_prediction_curve(word, predictions):
     print(f'Probability values:\n  {predictions}')
 
 
-def view_plateau(word, model_checkpoint):
+def view_plateau(word, df):
     """
     Checks to see if the word exists in the dataset and if so, plots the accuracy at each character position
     """
-    checkpoint = torch.load(model_checkpoint)
-    train_char_prediction_probs = checkpoint['train_char_prediction_probs']
-    valid_char_prediction_probs = checkpoint['valid_char_prediction_probs']
+    if word in df['Word'].to_list():
+        probabilities = df[df['Word'] == word]['Class Probabilities'].apply(lambda x: ast.literal_eval(x)).tolist()[0]
+        plot_prediction_curve(word, probabilities)
 
-    if word in train_char_prediction_probs:
-        print(f'{word} found in the training set.')
-        plot_prediction_curve(word, train_char_prediction_probs[word])
-    elif word in valid_char_prediction_probs:
-        print(f'{word} found in the validation set')
-        plot_prediction_curve(word, valid_char_prediction_probs[word])
     else:
         print(f'{word} not found.')
 

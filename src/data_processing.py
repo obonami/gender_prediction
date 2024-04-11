@@ -1,9 +1,6 @@
 import csv
 from random import shuffle
 
-import torch
-from sklearn.model_selection import train_test_split
-
 
 def reverse_sequence(noun):
     return noun[::-1]
@@ -57,80 +54,32 @@ def save_padded_words(filename, batch_of_words):
         f.writelines(lines)
 
 
-def save_probabilities(model_checkpoint, df, filename):
-    checkpoint = torch.load(model_checkpoint)
-    train = checkpoint['train_char_prediction_probs']
-    valid = checkpoint['valid_char_prediction_probs']
-
+def save_probabilities(probabilities, df, filename, mode, set):
+    """
+    Args:
+        probabilities: dict showing the probability of each class at each character position.
+        df: Pandas DataFrame object containing the true gender for each word
+        mode: 'w' (to overwrite the file) or 'a' (to append to the file)
+        set: a str showing which set the word belongs to ('Train' / 'Validation' / 'Test') 
+        filename: the name of a csv file to write the results to
+    """
     # Sorting the words in alphabetical order
-    sorted_train = dict(sorted(train.items()))
-    sorted_valid = dict(sorted(valid.items()))
+    sorted_items = dict(sorted(probabilities.items()))
 
     # Dictionary mapping words to their true genders
     word_to_gender = dict(zip(df.iloc[:,0], df['gen']))
 
-    with open(filename, 'w') as file:
+    assert mode in ['w', 'a'], "The mode needs to be either 'w' (to overwrite the file) or 'a' (to append to the file)"
+
+    with open(filename, mode) as file:
         writer = csv.writer(file)
-        writer.writerow(['Nouns', 'Class Probabilities', 'True Gender', 'Set'])
-        for valid_word, valid_pred_probs in sorted_valid.items():
-            true_gender = word_to_gender.get(valid_word, 'Gender not found')
-            writer.writerow([valid_word, valid_pred_probs, true_gender, 'Validation'])
+        if mode == 'w':
+            writer.writerow(['Nouns', 'Class Probabilities', 'True Gender', 'Set'])
+        for word, pred_probs in sorted_items.items():
+            true_gender = word_to_gender.get(word, 'Gender not found')
+            writer.writerow([word, pred_probs, true_gender, set])
 
-        for train_word, train_pred_probs in sorted_train.items():
-            true_gender = word_to_gender.get(train_word, 'Gender not found')
-            writer.writerow([train_word, train_pred_probs, true_gender, 'Training'])
         print(f'File successfully written to {filename}.')
-
-
-# class DataGenerator:
-
-#       def __init__(self, data, reverse_nouns=False, pad_token='<pad>', unk_token='<unk>'):
-
-#             self.pad_token = pad_token
-#             self.unk_token = unk_token
-
-#             self.input_idx2sym,self.input_sym2idx   = vocabulary(data,False)
-#             self.output_idx2sym,self.output_sym2idx = vocabulary(data,True)
-
-#             nouns, genders = get_data(data, reverse_nouns=reverse_nouns)
-            
-#             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(nouns, genders, test_size=0.2)
-
-#             self.train_size = len(self.X_train)
-#             self.test_size = len(self.X_test)
-
-#       def generate_batches(self,batch_size,validation=False):
-
-#             if validation:
-#                 X = self.X_test
-#                 y = self.y_test
-#             else:
-#                 X = self.X_train
-#                 y = self.y_train
-
-#             assert(len(X) == len(y))
-
-#             N     = len(X)
-#             idxes = list(range(N))
-
-#             # data ordering
-#             shuffle(idxes)
-#             idxes.sort(key=lambda idx: len(X[idx]))
-
-#             # batch generation
-#             bstart = 0
-#             while bstart < N:
-#                 bend        = min(bstart+batch_size,N)
-#                 batch_idxes = idxes[bstart:bend]
-#                 batch_len   = max(len(X[idx]) for idx in batch_idxes)
-#                 Xpad        = [pad_sequence(X[idx],batch_len,self.pad_token) for idx in batch_idxes]
-#                 #   save_padded_words('../data/eval/padded_fr', Xpad)
-#                 seqX        = [code_sequence(x,self.input_sym2idx,self.unk_token) for x in Xpad]
-#                 seqY        = [self.output_sym2idx[y[idx]] for idx in batch_idxes]
-
-#                 assert(len(seqX) == len(seqY))
-#                 yield (seqX,seqY)
-#                 bstart += batch_size
 
 
 class DataGenerator:
