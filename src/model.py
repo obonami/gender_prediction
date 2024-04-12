@@ -225,7 +225,7 @@ class GenderLSTM(nn.Module):
 
 
     def predict(self, datagenerator, batch_size, set=str):
-        predictions = {'Word': [], 'Predicted Gender': [], 'True Gender': [], 'Class Probabilities': [], 'Set': []}
+        predictions = {'Form': [], 'Predicted Gender': [], 'True Gender': [], 'Class Probabilities': [], 'Set': []}
         
         self.eval()
         for inputs, labels in datagenerator.generate_batches(batch_size):
@@ -242,7 +242,7 @@ class GenderLSTM(nn.Module):
                     word = ''.join([datagenerator.input_idx2sym[idx] for idx in X[i] if idx != pad_idx])
                     if self.reversed:
                         word = reverse_sequence(word)
-                    predictions['Word'].append(word)
+                    predictions['Form'].append(word)
                     predictions['Predicted Gender'].append(datagenerator.output_idx2sym[Y_pred[i]])
                     predictions['True Gender'].append(datagenerator.output_idx2sym[Y[i]])
 

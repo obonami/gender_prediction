@@ -22,8 +22,8 @@ def view_plateau(word, df):
     """
     Checks to see if the word exists in the dataset and if so, plots the accuracy at each character position
     """
-    if word in df['Word'].to_list():
-        probabilities = df[df['Word'] == word]['Class Probabilities'].apply(lambda x: ast.literal_eval(x)).tolist()[0]
+    if word in df['Form'].to_list():
+        probabilities = df[df['Form'] == word]['Class Probabilities'].apply(lambda x: ast.literal_eval(x)).tolist()[0]
         plot_prediction_curve(word, probabilities)
 
     else:
