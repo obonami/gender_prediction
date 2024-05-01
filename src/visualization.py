@@ -16,13 +16,14 @@ def plot_prediction_curve(word, predictions, true_class, binary=False):
     plt.style.use('ggplot')
     for i, class_i in enumerate(class_probs):
         plt.plot(range(len(characters)), class_i, color=colors[class_names[i]], marker='x' , label=class_names[i])
+        for j, prob in enumerate(class_i):
+            plt.text(j, prob, f'{prob:.2f}', ha='center', va='bottom', fontsize=8)  # display probabilities as text
     plt.title(f'Probability of each gender at each character position in "{word}"')
     plt.xlabel('Character indecies')
     plt.ylabel('Probability')
     plt.xticks(range(len(characters)), characters)
     plt.legend()
     plt.show()
-    print(f'Probability values:\n  {predictions}')
 
 
 def view_plateau(word, df, binary=False):
