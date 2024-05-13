@@ -171,6 +171,7 @@ def get_correct_wrong_pred_df(pred_df, pred_col, proportions):
 
 
 def get_category_gender_partition(category, echantinom, pred_df, pred_col, run=None, proportion=False):
+    # TODO: there is an issue with the count
     if run is not None:
         pred_df = pred_df[pred_df['Run'] == run]
 
