@@ -1,4 +1,5 @@
 import csv
+import pandas as pd
 from random import shuffle
 
 
@@ -130,3 +131,79 @@ class DataGenerator:
                 assert(len(seqX) == len(seqY))
                 yield (seqX, seqY)
                 bstart += batch_size
+
+
+
+def get_correct_wrong_pred_df(pred_df, pred_col, proportions):
+    
+    dfs = []
+    runs = pred_df['Run'].unique()
+    for run in runs:
+        run_data = pred_df[pred_df['Run'] == run]
+        crosstab = pd.crosstab(run_data[pred_col], run_data['true'])
+        
+        # Extract counts for true and false predictions for each gender
+        f_true = crosstab.loc['f', 'f'] if 'f' in crosstab.index else 0
+        m_true = crosstab.loc['m', 'm'] if 'm' in crosstab.index else 0
+        f_false = crosstab.loc['f', 'm'] if 'm' in crosstab.index else 0
+        m_false = crosstab.loc['m', 'f'] if 'f' in crosstab.index else 0
+        
+        if proportions :
+            total_f = f_true + f_false
+            total_m = m_true + m_false
+            f_true = round(f_true / total_f, 3) if total_f > 0 else 0
+            m_true = round(m_true / total_m, 3) if total_m > 0 else 0
+            f_false = round(f_false / total_f, 3) if total_f > 0 else 0
+            m_false = round(m_false / total_m, 3) if total_m > 0 else 0
+        
+        run_dict = {
+            'Run': run,
+            'f_true': f_true,
+            'm_true': m_true,
+            'f_false': f_false,
+            'm_false': m_false
+        }
+        
+        dfs.append(run_dict)
+
+    return pd.DataFrame(dfs)
+
+
+
+def get_category_gender_partition(category, echantinom, pred_df, pred_col, run=None, proportion=False):
+    if run is not None:
+        pred_df = pred_df[pred_df['Run'] == run]
+
+    true_cross_tab = pd.crosstab(echantinom[echantinom['lemma'].isin(pred_df['lemma'])][category], pred_df['true'])
+    true_cross_tab.columns = ['f_true', 'm_true']
+
+    f_false = pred_df[(pred_df[pred_col] == 'f') & (pred_df['true'] == 'm')].groupby(echantinom[category]).size().rename('f_false')
+    m_false = pred_df[(pred_df[pred_col] == 'm') & (pred_df['true'] == 'f')].groupby(echantinom[category]).size().rename('m_false')
+
+    combined_df = pd.concat([true_cross_tab, f_false, m_false], axis=1)
+    combined_df.fillna(0, inplace=True)
+    combined_df = combined_df.loc[combined_df.sum(axis=1).sort_values(ascending=False).index]
+
+    if proportion:
+        f_total = combined_df['f_true'] + combined_df['f_false']
+        m_total = combined_df['m_true'] + combined_df['m_false']
+        combined_df['f_true'] = round(combined_df['f_true'] / f_total, 3)
+        combined_df['f_false'] = round(combined_df['f_false'] / f_total, 3)
+        combined_df['m_true'] = round(combined_df['m_true'] / m_total, 3)
+        combined_df['m_false'] = round(combined_df['m_false'] / m_total, 3)
+
+    return combined_df
+
+
+
+
+def get_false_preds(run, echantinom, pred_col, pred_gender, true_gender, pred_df, category, subcategory):
+   
+    f_false_rows = pred_df[(pred_df['Run'] == run) & (pred_df[pred_col] == pred_gender) & (pred_df['true'] == true_gender)]
+
+    # Merge to get the 'category' column
+    f_false_rows = f_false_rows.merge(echantinom[['lemma', category]], how='left', left_on='lemma', right_on='lemma')
+
+    # Filter to keep only the subcategory rows 
+    simplex_f_false_rows = f_false_rows[f_false_rows[category] == subcategory]
+    return simplex_f_false_rows
