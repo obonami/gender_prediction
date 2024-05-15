@@ -211,10 +211,10 @@ def get_false_preds(run, echantinom, pred_col, pred_gender, true_gender, pred_df
 
 
 
-def get_subcategories_count_per_run(pred_df, pred_gender, true_gender, category, echantinom):
+def get_subcategories_count_per_run(pred_df, pred_gender, true_gender, category, echantinom, col= 'orth_pred'):
     all_runs = []
     for run in range(10):
-        f_false_rows = pred_df[(pred_df['Run'] == run) & (pred_df["orth_pred"] == pred_gender) & (pred_df['true'] == true_gender)]
+        f_false_rows = pred_df[(pred_df['Run'] == run) & (pred_df[col] == pred_gender) & (pred_df['true'] == true_gender)]
 
         f_false_rows = f_false_rows.merge(echantinom[['lemma', category]], how='left', on='lemma')
 
