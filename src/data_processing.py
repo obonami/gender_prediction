@@ -208,3 +208,20 @@ def get_false_preds(run, echantinom, pred_col, pred_gender, true_gender, pred_df
     # Filter to keep only the subcategory rows 
     simplex_f_false_rows = f_false_rows[f_false_rows[category] == subcategory]
     return simplex_f_false_rows
+
+
+
+def get_subcategories_count_per_run(pred_df, pred_gender, true_gender, category, echantinom):
+    all_runs = []
+    for run in range(10):
+        f_false_rows = pred_df[(pred_df['Run'] == run) & (pred_df["orth_pred"] == pred_gender) & (pred_df['true'] == true_gender)]
+
+        f_false_rows = f_false_rows.merge(echantinom[['lemma', category]], how='left', on='lemma')
+
+        run_counts = f_false_rows.groupby(category)['lemma'].count().reset_index()
+        run_counts['Run'] = run  
+        all_runs.append(run_counts)
+
+    all_runs_df = pd.concat(all_runs, ignore_index=True)
+    pivot_table = all_runs_df.pivot_table(index=category, columns='Run', values='lemma', fill_value=0)
+    return pivot_table
