@@ -225,3 +225,9 @@ def get_subcategories_count_per_run(pred_df, pred_gender, true_gender, category,
     all_runs_df = pd.concat(all_runs, ignore_index=True)
     pivot_table = all_runs_df.pivot_table(index=category, columns='Run', values='lemma', fill_value=0)
     return pivot_table
+
+
+
+
+def most_common(series):
+    return series.value_counts().index[0]
