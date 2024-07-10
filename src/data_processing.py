@@ -1,5 +1,6 @@
 import csv
 import pandas as pd
+import random
 from random import shuffle
 
 
@@ -231,3 +232,8 @@ def get_subcategories_count_per_run(pred_df, pred_gender, true_gender, category,
 
 def most_common(series):
     return series.value_counts().index[0]
+
+
+def get_examples(category, df, n=5):
+    examples = df[df['last_process_broad'] == category]['lemma'].tolist()
+    return random.sample(examples, min(n, len(examples)))
