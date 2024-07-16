@@ -234,6 +234,24 @@ def most_common(series):
     return series.value_counts().index[0]
 
 
-def get_examples(category, df, n=5):
-    examples = df[df['last_process_broad'] == category]['lemma'].tolist()
+def get_examples(category, subcat, df, n=5):
+    examples = df[df[category] == subcat]['lemma'].tolist()
     return random.sample(examples, min(n, len(examples)))
+
+
+
+def get_category_proportions(data, category):
+    gender_counts = data[category].value_counts()
+    gender_percentages = gender_counts / gender_counts.sum() * 100
+    gender_distribution = pd.DataFrame({
+        'Count': gender_counts,
+        'Percentage': gender_percentages
+    })
+
+    gender_distribution = gender_distribution.sort_values('Count', ascending=False)
+    for gender, row in gender_distribution.iterrows():
+        count = row['Count']
+        percentage = row['Percentage']
+        print(f"{gender}: {percentage:.1f}% ({count:,})")
+
+    print(f"Total: 100% ({gender_counts.sum():,})")
