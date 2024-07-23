@@ -1,7 +1,10 @@
 import ast
-import matplotlib.pyplot as plt
-from typing import List
+from typing import List, Tuple, Dict
+
 from itertools import cycle
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
 # def plot_prediction_curve(word, predictions, true_class, binary=False):
@@ -85,12 +88,12 @@ def plot_prediction_curve(words, words_data, binary=False):
     plt.show()
 
 
-def view_plateau(words:List, df, binary=False, multiple_runs=False):
+def view_plateau(words:List, df, binary=False, multiruns=False):
     for word in words:
         if word not in df['Form'].tolist():
             return f'"{word}" not found. Cannot proceed.'
             
-    if multiple_runs:
+    if multiruns:
         num_runs = df['Run'].nunique()
     else:
         num_runs = 1
@@ -130,3 +133,29 @@ def plot_metrics(train_acc, valid_acc, train_losses, valid_losses):
     ax2.grid(True, linestyle='--')
 
     plt.show()
+
+
+""" Plots the average probability at each character position for words with a given suffix """
+
+def extract_true_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], true_class: str) -> List[float]:
+    return [tup[1][true_class] for tup in ast.literal_eval(word_probs)]
+
+def suffix_avg_plot(df, suffix:str, title=True) -> None:
+    filtered_df = df[df['suffix'] == suffix].copy()
+    filtered_df['True Probs'] = filtered_df.apply(
+        lambda row: extract_true_class_probs(row['Class Probabilities'], row['True Gender']), 
+        axis=1
+        )
+
+    # Explodes the 'True Probs' column to separate each probability into its own row
+    filtered_df = filtered_df.explode('True Probs')
+    
+    # Indicates the position of each probability within the original list before the explode operation
+    filtered_df['Position'] = filtered_df.groupby(level=0).cumcount()
+    
+    sns.set_theme(style="darkgrid")
+    plot = sns.relplot(data=filtered_df, x='Position', y='True Probs', kind='line')
+    plot.set_axis_labels("Character Position (from the end)", "Probability")
+    if title:
+        plot.figure.suptitle(f'Average Probability Distribution for Words with Suffix: "{suffix}"', size=14, x=0.56)
+    plot.tight_layout()
