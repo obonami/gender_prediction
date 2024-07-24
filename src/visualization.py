@@ -138,7 +138,12 @@ def plot_metrics(train_acc, valid_acc, train_losses, valid_losses):
 """ Plots the average probability at each character position for words with a given suffix """
 
 def extract_true_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], true_class: str) -> List[float]:
-    return [tup[1][true_class] for tup in ast.literal_eval(word_probs)]
+    try:
+        result = [tup[1][true_class] for tup in ast.literal_eval(word_probs)]
+        return result
+    except Exception as e:
+        print(f"Error processing {word_probs} with 'True Gender' {true_class} ({e}). Maybe an incorrect suffix is selected?")
+        return []
 
 def suffix_avg_plot(df, suffix:str, title=True) -> None:
     filtered_df = df[df['suffix'] == suffix].copy()
@@ -159,3 +164,4 @@ def suffix_avg_plot(df, suffix:str, title=True) -> None:
     if title:
         plot.figure.suptitle(f'Average Probability Distribution for Words with Suffix: "{suffix}"', size=14, x=0.56)
     plot.tight_layout()
+    plt.show()
