@@ -1,9 +1,8 @@
 import ast
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 from itertools import cycle
 import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 
 
@@ -44,10 +43,16 @@ import seaborn as sns
 #         print(f'{word} not found.')      
 
 
-def plot_prediction_curve(words, words_data, binary=False):
+def plot_prediction_curve(words, words_data, binary=False, display_probs=False, scale=False):
     """
-    If binary=True, plots the evolution of the true class probabilities over characters. 
-    Otherwise, plots the evolution of all class probabilities. 
+    binary: If True, plots the evolution of the true class probabilities over characters. 
+            Otherwise, plots the evolution of all class probabilities. 
+    display_probs: Whether or not to display the probability values at each point
+    scale:  Whether or not to scale the y_axis to a certain range.
+            Possible values: 
+                - True: Scales from 0 to 1 
+                - False: The range will be from the minimum to maximum value (default)
+                - List[int]: Custom scaling range
     """
     plt.style.use('ggplot')
     line_styles = ['-', ':', '--', '-.']
@@ -73,10 +78,22 @@ def plot_prediction_curve(words, words_data, binary=False):
                              linestyle=styles[style % len(styles)][0], 
                              color=styles[style % len(styles)][1],
                              marker='x', 
-                             label=f'{word} ({class_names[i]})')
-            for j, prob in enumerate(class_i):
-                plt.text(j, prob, f'{prob:.2f}', color=line.get_color(), ha='center', va='bottom', fontsize=8)  # to display the probabilities as text 
+                             label=f'{word} ({class_names[i]})')            
+            if display_probs:   # display the probabilities as text
+                for j, prob in enumerate(class_i):
+                    plt.text(j, prob, f'{prob:.2f}', color=line.get_color(), ha='center', va='bottom', fontsize=8)         
         style += 1
+    
+    if scale is True:
+        plt.ylim(0, 1)
+    elif isinstance(scale, list) and len(scale) == 2:
+        plt.ylim(scale[0], scale[1])
+    # Otherwise, the y-axis will be automatically scaled from min to max values
+    
+    # Ensures x-axis displays integer values starting from 1
+    ax = plt.gca()
+    ax.set_xticks(range(len(characters)))
+    ax.set_xticklabels(range(1, len(characters) + 1))
     
     if binary:
         plt.title('Probability of the true class at each character position')
@@ -88,7 +105,7 @@ def plot_prediction_curve(words, words_data, binary=False):
     plt.show()
 
 
-def view_plateau(words:List, df, binary=False, multiruns=False):
+def view_curve(words:List, df, binary=False, multiruns=False, display_probs=False, scale=False):
     for word in words:
         if word not in df['Form'].tolist():
             return f'"{word}" not found. Cannot proceed.'
@@ -104,7 +121,7 @@ def view_plateau(words:List, df, binary=False, multiruns=False):
         except KeyError:
             words_data = df[df['Form'].isin(words)]
         
-        plot_prediction_curve(words, words_data, binary=binary)
+        plot_prediction_curve(words, words_data, binary=binary, display_probs=display_probs, scale=scale)
 
 
 def plot_metrics(train_acc, valid_acc, train_losses, valid_losses):
@@ -145,7 +162,14 @@ def extract_true_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], tru
         print(f"Error processing {word_probs} with 'True Gender' {true_class} ({e}). Maybe an incorrect suffix is selected?")
         return []
 
-def suffix_avg_plot(df, suffix:str, title=True) -> None:
+def suffix_avg_plot(df, suffix:str, title=True, scale: Union[bool, List[int]] = False) -> None:
+    """
+    scale: Whether or not to scale the y_axis to a certain range.
+    Possible values: 
+        - True: Scales from 0 to 1 
+        - False: The range will be from the minimum to maximum value (default)
+        - List[int]: Custom scaling range
+    """
     filtered_df = df[df['suffix'] == suffix].copy()
     filtered_df['True Probs'] = filtered_df.apply(
         lambda row: extract_true_class_probs(row['Class Probabilities'], row['True Gender']), 
@@ -161,7 +185,24 @@ def suffix_avg_plot(df, suffix:str, title=True) -> None:
     sns.set_theme(style="darkgrid")
     plot = sns.relplot(data=filtered_df, x='Position', y='True Probs', kind='line')
     plot.set_axis_labels("Character Position (from the end)", "Probability")
+
+    if scale is True:
+        plt.ylim(0, 1)
+    elif isinstance(scale, list) and len(scale) == 2:
+        plt.ylim(scale[0], scale[1])
+    # Otherwise, the y-axis will be automatically scaled from min to max values
+
+    # Ensure x-axis displays integer values starting from 1
+    ax = plt.gca()
+    positions = filtered_df['Position'].unique()
+    ax.set_xticks(positions)
+    ax.set_xticklabels(positions + 1)
+
     if title:
-        plot.figure.suptitle(f'Average Probability Distribution for Words with Suffix: "{suffix}"', size=14, x=0.56)
+        n_samples = filtered_df.Form.nunique()
+        plot.figure.suptitle(
+            f'Average Probability Distribution for Words with Suffix: "{suffix}" ({n_samples} samples)', 
+            size=14, x=0.56
+            )
     plot.tight_layout()
     plt.show()
