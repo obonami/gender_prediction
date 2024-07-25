@@ -43,8 +43,9 @@ import seaborn as sns
 #         print(f'{word} not found.')      
 
 
-def plot_prediction_curve(words, words_data, binary=False, display_probs=False, scale=False):
+def plot_prediction_curve(words, words_data, binary=False, gender:str='', display_probs=False, scale=False):
     """
+    gender: Only used if binary is set to True. Possible values: 'True', 'f', 'm'
     binary: If True, plots the evolution of the true class probabilities over characters. 
             Otherwise, plots the evolution of all class probabilities. 
     display_probs: Whether or not to display the probability values at each point
@@ -62,10 +63,12 @@ def plot_prediction_curve(words, words_data, binary=False, display_probs=False, 
     
     for word in words:
         word_predictions = words_data[words_data['Form'] == word]['Class Probabilities'].apply(lambda x: ast.literal_eval(x)).tolist()[0]
-        true_class = words_data[words_data['Form'] == word]['True Gender'].item()
         
-        if binary:
-            class_names = [true_class]  # cleaner to only plot the evolution of the true class
+        if binary:  # cleaner to only plot the evolution of one gender
+            assert gender in ['True', 'f', 'm'], "Possible values for the gender parameter are 'True', 'f', or 'm'."
+            if gender == 'True':
+                gender = words_data[words_data['Form'] == word]['True Gender'].item()
+            class_names = [gender]  
         else:
             class_names = list(word_predictions[0][1].keys())
 
@@ -96,16 +99,19 @@ def plot_prediction_curve(words, words_data, binary=False, display_probs=False, 
     ax.set_xticklabels(range(1, len(characters) + 1))
     
     if binary:
-        plt.title('Probability of the true class at each character position')
+        gender_mapping = {'m': 'masculine', 'f': 'feminine'}
+        plt.title(f'Probability of the {gender_mapping.get(gender)} gender at each character position')
+        plt.ylabel(f'Probability of {gender_mapping.get(gender)}')
     else:
         plt.title('Probability of each gender at each character position')
+        plt.ylabel(f'Probability')
+    
     plt.xlabel('Character indices')
-    plt.ylabel('Probability')
     plt.legend()
     plt.show()
 
 
-def view_curve(words:List, df, binary=False, multiruns=False, display_probs=False, scale=False):
+def view_curve(words:List, df, binary=False, gender:str='', multiruns=False, display_probs=False, scale=False):
     for word in words:
         if word not in df['Form'].tolist():
             return f'"{word}" not found. Cannot proceed.'
@@ -121,7 +127,7 @@ def view_curve(words:List, df, binary=False, multiruns=False, display_probs=Fals
         except KeyError:
             words_data = df[df['Form'].isin(words)]
         
-        plot_prediction_curve(words, words_data, binary=binary, display_probs=display_probs, scale=scale)
+        plot_prediction_curve(words, words_data, binary=binary, gender=gender, display_probs=display_probs, scale=scale)
 
 
 def plot_metrics(train_acc, valid_acc, train_losses, valid_losses):
@@ -154,37 +160,42 @@ def plot_metrics(train_acc, valid_acc, train_losses, valid_losses):
 
 """ Plots the average probability at each character position for words with a given suffix """
 
-def extract_true_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], true_class: str) -> List[float]:
+def extract_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], gen:str) -> List[float]:
     try:
-        result = [tup[1][true_class] for tup in ast.literal_eval(word_probs)]
+        result = [tup[1][gen] for tup in ast.literal_eval(word_probs)]
         return result
     except Exception as e:
-        print(f"Error processing {word_probs} with 'True Gender' {true_class} ({e}). Maybe an incorrect suffix is selected?")
+        print(f"Error processing {word_probs} with gender {gen} ({e}). Maybe an incorrect suffix is selected?")
         return []
 
-def suffix_avg_plot(df, suffix:str, title=True, scale: Union[bool, List[int]] = False) -> None:
+def suffix_avg_plot(df, suffix:str, gender:str, title=True, scale: Union[bool, List[int]] = False) -> None:
     """
+    gender: Possible values: 'True', 'f', 'm'
     scale: Whether or not to scale the y_axis to a certain range.
     Possible values: 
         - True: Scales from 0 to 1 
         - False: The range will be from the minimum to maximum value (default)
         - List[int]: Custom scaling range
     """
+    assert gender in ['True', 'f', 'm'], "Possible values for the gender parameter are 'True', 'f', or 'm'."
+
     filtered_df = df[df['suffix'] == suffix].copy()
-    filtered_df['True Probs'] = filtered_df.apply(
-        lambda row: extract_true_class_probs(row['Class Probabilities'], row['True Gender']), 
-        axis=1
-        )
+    filtered_df['Probs'] = filtered_df.apply(lambda row: extract_class_probs(
+        row['Class Probabilities'], row['True Gender'] if gender == 'True' else gender
+        ), axis=1)
 
     # Explodes the 'True Probs' column to separate each probability into its own row
-    filtered_df = filtered_df.explode('True Probs')
+    filtered_df = filtered_df.explode('Probs')
     
     # Indicates the position of each probability within the original list before the explode operation
     filtered_df['Position'] = filtered_df.groupby(level=0).cumcount()
     
     sns.set_theme(style="darkgrid")
-    plot = sns.relplot(data=filtered_df, x='Position', y='True Probs', kind='line')
-    plot.set_axis_labels("Character Position (from the end)", "Probability")
+    plot = sns.relplot(data=filtered_df, x='Position', y='Probs', kind='line')
+    
+    gender_mapping = {'m': 'masculine', 'f': 'feminine'}
+    plot.set_axis_labels("Character Position (from the end)", 
+                         f"Probability of {gender_mapping.get(gender, 'True gender')}")
 
     if scale is True:
         plt.ylim(0, 1)
