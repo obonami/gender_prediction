@@ -168,9 +168,10 @@ def extract_class_probs(word_probs: List[Tuple[str, Dict[str, float]]], gen:str)
         print(f"Error processing {word_probs} with gender {gen} ({e}). Maybe an incorrect suffix is selected?")
         return []
 
-def suffix_avg_plot(df, suffix:str, gender:str, title=True, scale: Union[bool, List[int]] = False) -> None:
+def suffix_avg_plot(df, suffix:str, gender:str, min_dp:int=0, title=True, scale:Union[bool,List[int]]=False) -> None:
     """
     gender: Possible values: 'True', 'f', 'm'
+    min_dp: minimum number of data points required for a position to be considered
     scale: Whether or not to scale the y_axis to a certain range.
     Possible values: 
         - True: Scales from 0 to 1 
@@ -180,15 +181,20 @@ def suffix_avg_plot(df, suffix:str, gender:str, title=True, scale: Union[bool, L
     assert gender in ['True', 'f', 'm'], "Possible values for the gender parameter are 'True', 'f', or 'm'."
 
     filtered_df = df[df['suffix'] == suffix].copy()
+    n_samples = filtered_df.Form.nunique()
+    
     filtered_df['Probs'] = filtered_df.apply(lambda row: extract_class_probs(
         row['Class Probabilities'], row['True Gender'] if gender == 'True' else gender
         ), axis=1)
 
-    # Explodes the 'True Probs' column to separate each probability into its own row
+    # Separating each probability into its own row
     filtered_df = filtered_df.explode('Probs')
     
-    # Indicates the position of each probability within the original list before the explode operation
+    # Keeping track of the position of each probability within the original list before the explode operation
     filtered_df['Position'] = filtered_df.groupby(level=0).cumcount()
+
+    # Filtering out positions that appear less than min_dp times
+    filtered_df = filtered_df[filtered_df.groupby('Position')['Position'].transform('size') >= min_dp]
     
     sns.set_theme(style="darkgrid")
     plot = sns.relplot(data=filtered_df, x='Position', y='Probs', kind='line')
@@ -210,7 +216,6 @@ def suffix_avg_plot(df, suffix:str, gender:str, title=True, scale: Union[bool, L
     ax.set_xticklabels(positions + 1)
 
     if title:
-        n_samples = filtered_df.Form.nunique()
         plot.figure.suptitle(
             f'Average Probability Distribution for Words with Suffix: "{suffix}" ({n_samples} samples)', 
             size=14, x=0.56
