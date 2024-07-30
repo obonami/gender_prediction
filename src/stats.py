@@ -143,3 +143,19 @@ class SuffixAverage:
         except Exception as e:
             print(f"Error processing {word_probs} with gender {gen} ({e}). Maybe an incorrect suffix is selected?")
             return []
+        
+
+def avg_dist_to_suffix_avg(df, suffix, gender, ndigits=int(1e9)):
+    """ 
+    Calculates the average Euclidean distance of the probability vectors of all 
+    words ending with a specified suffix to their overall average probability vector.
+    """
+    distance = Distance(df)
+    sfx_avg = SuffixAverage(df, suffix)
+
+    sfx_words = df[df.suffix == suffix].Form    
+    sfx_avg_prob = sfx_avg.prob(gender=gender)
+
+    distances = [distance.euclidean(word, sfx_avg_prob) for word in sfx_words]
+
+    return round(sum(distances)/len(distances), ndigits)
